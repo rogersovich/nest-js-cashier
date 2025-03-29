@@ -14,10 +14,6 @@ export class RoleFiltersDto {
   @IsOptional()
   @IsString()
   name?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  is_delete?: boolean;
 }
 
 export class RoleSearchDto {
@@ -45,4 +41,8 @@ export class RoleSearchDto {
   @IsInt()
   @Min(1)
   limit?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  is_delete?: boolean;
 }

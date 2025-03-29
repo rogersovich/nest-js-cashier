@@ -20,21 +20,21 @@ export class RolesService {
   ) {}
 
   async findAll(dto: RoleSearchDto): Promise<RoleSearchOutputDto[]> {
-    const filters: Record<string, any> = { ...dto.filters };
-
-    if ('is_delete' in filters) {
-      filters.deleted_at = filters.is_delete ? '__NOT_NULL__' : null;
-      delete filters.is_delete;
-    }
-
     const { whereClause, params: whereParams } =
-      this.baseRawService.buildDynamicWhere(filters, ['name', 'deleted_at']);
+      this.baseRawService.buildDynamicWhere(dto.filters ?? {}, ['name']);
+
+    const otherWhereClauses: string[] = [];
+    const otherParams = [];
+
+    //? Add where clause "is_delete"
+    if (dto.is_delete) {
+      otherWhereClauses.push('deleted_at IS NOT NULL');
+    } else {
+      otherWhereClauses.push('deleted_at IS NULL');
+    }
 
     // const otherWhereClauses = ['branch_id = ?', 'status = ?'];
     // const otherParams = [1, 'active'];
-
-    const otherWhereClauses = [];
-    const otherParams = [];
 
     const finalWhereClause = mergeWhereClause(whereClause, otherWhereClauses);
 

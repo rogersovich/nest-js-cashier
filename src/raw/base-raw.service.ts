@@ -51,12 +51,8 @@ export class BaseRawService {
 
     for (const key of columns) {
       const value = filters[key];
-      if (value !== undefined) {
-        if (value === null) {
-          where.push(`${key} IS NULL`);
-        } else if (value === '__NOT_NULL__') {
-          where.push(`${key} IS NOT NULL`);
-        } else if (typeof value === 'string') {
+      if (value !== undefined && value !== null) {
+        if (typeof value === 'string') {
           where.push(`${key} LIKE ?`);
           params.push(`%${value}%`);
         } else {
