@@ -8,16 +8,16 @@ import {
   Post,
 } from '@nestjs/common';
 import { RolesService } from './roles.service';
-import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { SearchRoleDto } from './dto/search-role.dto';
+import { RoleCreateDto } from './dto/role-create.dto';
+import { RoleUpdateDto } from './dto/role-update.dto';
+import { RoleSearchDto } from './dto/role-search.dto';
 
 @Controller('roles')
 export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Post()
-  findAll(@Body() dto: SearchRoleDto) {
+  findAll(@Body() dto: RoleSearchDto) {
     return this.rolesService.findAll(dto);
   }
 
@@ -32,12 +32,12 @@ export class RolesController {
   }
 
   @Post()
-  create(@Body() createRoleDto: CreateRoleDto) {
+  create(@Body() createRoleDto: RoleCreateDto) {
     return this.rolesService.create(createRoleDto.name);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateDto: UpdateRoleDto) {
+  update(@Param('id') id: string, @Body() updateDto: RoleUpdateDto) {
     return this.rolesService.update(+id, updateDto);
   }
 

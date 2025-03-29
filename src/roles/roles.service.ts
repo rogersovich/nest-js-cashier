@@ -2,9 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Role } from './roles.entity';
-import { UpdateRoleDto } from './dto/update-role.dto';
-import { SearchRoleDto } from './dto/search-role.dto';
+import { RoleUpdateDto } from './dto/role-update.dto';
 import { TSelectOption } from 'src/common/interfaces/general-response.interface';
+import { BaseRawService } from 'src/raw/base-raw.service';
+import { RoleSearchDto } from './dto/role-search.dto';
+import { RoleSearchOutputDto } from './dto/role-output.dto';
 
 @Injectable()
 export class RolesService {
@@ -13,30 +15,32 @@ export class RolesService {
     private readonly roleRepository: Repository<Role>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly baseRawService: BaseRawService,
   ) {}
 
-  async findAll(dto: SearchRoleDto): Promise<Role[]> {
-    const { filter, order_by, sort } = dto;
+  async findAll(dto: RoleSearchDto): Promise<RoleSearchOutputDto[]> {
+    const { whereClause, params: whereParams } =
+      this.baseRawService.buildDynamicWhere(dto.filters ?? {}, ['name']);
 
-    const query = this.dataSource
-      .createQueryBuilder()
-      .select(['role.id', 'role.name'])
-      .from(Role, 'role');
+    const { clause: sortClause, params: paginationParams } =
+      this.baseRawService.buildPaginationAndSort(
+        dto.order_by ?? 'id',
+        dto.sort ?? 'ASC',
+        dto.page,
+        dto.limit,
+        ['id', 'name', 'createdAt'],
+      );
 
-    // Add WHERE filter
-    if (filter?.name) {
-      query.where('role.name LIKE :name', { name: `%${filter.name}%` });
-    }
+    const sql = `
+      SELECT id, name
+      FROM roles
+      ${whereClause}
+      ${sortClause}
+    `;
 
-    // Add ORDER BY
-    if (order_by) {
-      query.orderBy(`role.${order_by}`, sort === 'DESC' ? 'DESC' : 'ASC');
-    } else {
-      query.orderBy('role.id', 'ASC'); // default
-    }
+    const fullParams = [...whereParams, ...paginationParams];
 
-    // Run the query
-    return await query.getMany();
+    return this.baseRawService.query<RoleSearchOutputDto>(sql, fullParams);
   }
 
   async getOptions(): Promise<TSelectOption<number>[]> {
@@ -44,7 +48,7 @@ export class RolesService {
       .createQueryBuilder()
       .select(['role.id AS value', 'role.name AS label'])
       .from(Role, 'role')
-      .orderBy('role.name', 'ASC')
+      .orderBy('role.id', 'ASC')
       .getRawMany();
 
     return roles as TSelectOption<number>[];
@@ -63,7 +67,7 @@ export class RolesService {
     return this.roleRepository.save(role);
   }
 
-  async update(id: number, dto: UpdateRoleDto) {
+  async update(id: number, dto: RoleUpdateDto) {
     const role = await this.roleRepository.findOneBy({ id });
 
     if (!role) {
