@@ -31,17 +31,17 @@ export class RolesController {
     return this.rolesService.findOne(+id);
   }
 
-  @Post()
+  @Post('create')
   create(@Body() createRoleDto: RoleCreateDto) {
     return this.rolesService.create(createRoleDto.name);
   }
 
-  @Patch(':id')
+  @Patch('update/:id')
   update(@Param('id') id: string, @Body() updateDto: RoleUpdateDto) {
     return this.rolesService.update(+id, updateDto);
   }
 
-  @Delete(':id')
+  @Delete('delete/:id')
   remove(@Param('id') id: string) {
     return this.rolesService.remove(+id);
   }

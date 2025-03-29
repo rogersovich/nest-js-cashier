@@ -6,6 +6,7 @@ import {
   IsInt,
   Min,
   ValidateNested,
+  IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -13,6 +14,10 @@ export class RoleFiltersDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  is_delete?: boolean;
 }
 
 export class RoleSearchDto {

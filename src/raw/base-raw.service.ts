@@ -1,5 +1,9 @@
 // src/raw/base-raw.service.ts
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 @Injectable()
@@ -7,12 +11,32 @@ export class BaseRawService {
   constructor(private readonly dataSource: DataSource) {}
 
   async query<T = any>(sql: string, params: any[] = []): Promise<T[]> {
-    return this.dataSource.query(sql, params);
+    try {
+      return await this.dataSource.query(sql, params);
+    } catch (error) {
+      console.error('❌ RAW SQL Error:', error);
+
+      if (error.name === 'QueryFailedError') {
+        throw new BadRequestException('Invalid query: ' + error.message);
+      }
+
+      throw new InternalServerErrorException('Failed to execute query');
+    }
   }
 
   async queryOne<T = any>(sql: string, params: any[] = []): Promise<T | null> {
-    const result = await this.dataSource.query(sql, params);
-    return (result[0] as T) ?? null;
+    try {
+      const result = await this.dataSource.query(sql, params);
+      return (result[0] as T) ?? null;
+    } catch (error: any) {
+      console.error('❌ RAW SQL ERROR:', error);
+
+      if (error.name === 'QueryFailedError') {
+        throw new BadRequestException(`Invalid SQL Query: ${error.message}`);
+      }
+
+      throw new InternalServerErrorException('Unexpected server error.');
+    }
   }
 
   buildDynamicWhere(
@@ -27,8 +51,12 @@ export class BaseRawService {
 
     for (const key of columns) {
       const value = filters[key];
-      if (value !== undefined && value !== null) {
-        if (typeof value === 'string') {
+      if (value !== undefined) {
+        if (value === null) {
+          where.push(`${key} IS NULL`);
+        } else if (value === '__NOT_NULL__') {
+          where.push(`${key} IS NOT NULL`);
+        } else if (typeof value === 'string') {
           where.push(`${key} LIKE ?`);
           params.push(`%${value}%`);
         } else {

@@ -7,6 +7,7 @@ import { TSelectOption } from 'src/common/interfaces/general-response.interface'
 import { BaseRawService } from 'src/raw/base-raw.service';
 import { RoleSearchDto } from './dto/role-search.dto';
 import { RoleSearchOutputDto } from './dto/role-output.dto';
+import { mergeWhereClause } from 'src/common/utils/query.util';
 
 @Injectable()
 export class RolesService {
@@ -19,8 +20,23 @@ export class RolesService {
   ) {}
 
   async findAll(dto: RoleSearchDto): Promise<RoleSearchOutputDto[]> {
+    const filters: Record<string, any> = { ...dto.filters };
+
+    if ('is_delete' in filters) {
+      filters.deleted_at = filters.is_delete ? '__NOT_NULL__' : null;
+      delete filters.is_delete;
+    }
+
     const { whereClause, params: whereParams } =
-      this.baseRawService.buildDynamicWhere(dto.filters ?? {}, ['name']);
+      this.baseRawService.buildDynamicWhere(filters, ['name', 'deleted_at']);
+
+    // const otherWhereClauses = ['branch_id = ?', 'status = ?'];
+    // const otherParams = [1, 'active'];
+
+    const otherWhereClauses = [];
+    const otherParams = [];
+
+    const finalWhereClause = mergeWhereClause(whereClause, otherWhereClauses);
 
     const { clause: sortClause, params: paginationParams } =
       this.baseRawService.buildPaginationAndSort(
@@ -34,11 +50,11 @@ export class RolesService {
     const sql = `
       SELECT id, name
       FROM roles
-      ${whereClause}
+      ${finalWhereClause}
       ${sortClause}
     `;
 
-    const fullParams = [...whereParams, ...paginationParams];
+    const fullParams = [...whereParams, ...otherParams, ...paginationParams];
 
     return this.baseRawService.query<RoleSearchOutputDto>(sql, fullParams);
   }
@@ -55,7 +71,11 @@ export class RolesService {
   }
 
   async findOne(id: number): Promise<Role> {
-    const role = await this.roleRepository.findOneBy({ id });
+    const role = await this.roleRepository.findOne({
+      where: { id },
+      withDeleted: false, // hanya ambil yang belum di-soft delete
+    });
+
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
     }
@@ -68,7 +88,10 @@ export class RolesService {
   }
 
   async update(id: number, dto: RoleUpdateDto) {
-    const role = await this.roleRepository.findOneBy({ id });
+    const role = await this.roleRepository.findOne({
+      where: { id },
+      withDeleted: false, // hanya ambil yang belum di-soft delete
+    });
 
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
@@ -83,17 +106,20 @@ export class RolesService {
   }
 
   async remove(id: number) {
-    const role = await this.roleRepository.findOneBy({ id });
+    const role = await this.roleRepository.findOne({
+      where: { id },
+      withDeleted: false, // hanya ambil yang belum di-soft delete
+    });
 
     if (!role) {
       throw new NotFoundException(`Role with ID ${id} not found`);
     }
 
-    await this.roleRepository.delete(id);
+    await this.roleRepository.softDelete(id); // ⬅️ soft delete!
 
     return {
       data: null,
-      message: `Role with ID ${id} successfully deleted`,
+      message: `Role successfully deleted`,
     };
   }
 }
